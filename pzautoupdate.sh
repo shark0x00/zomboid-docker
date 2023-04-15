@@ -1,4 +1,5 @@
 #!/bin/bash
+# pzautoupdate.sh
 
 checkupdate() {
         # get current build id
