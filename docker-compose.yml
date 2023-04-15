@@ -1,0 +1,12 @@
+# docker-compose.yml 
+services:
+  steamcmd:
+    image: cm2network/steamcmd:root
+    container_name: steamcmd
+    tty: true
+    ports:
+      - "0.0.0.0:16261:16261/udp"
+      - "0.0.0.0:16262:16262/udp"
+    volumes:
+     - /mount/steamcmd_login_volume:/home/steam
+     - /mount/steamcmd_volume:/home/steam/steamcmd
