@@ -1,11 +1,13 @@
 # zomboid-docker
 
-Full installation instructions can be found under: 
+These files can be used to create and maintain a Project Zomboid server based on docker. 
+
+A comprehensive explanation of the setup can be found under: 
 https://blog.stonesec.de/project-zomboid-docker-compose/
 
 ## Installation
 
-The initial installation procedure can be found on the PZWIKI page. I followed the installation procedure for steamcmd using the steam user:
+The initial installation procedure can be found on the PZWIKI page. I followed the installation procedure for steamcmd using the steam user within the docker container:
 
 ```
 cat >$HOME/update_zomboid.txt <<'EOL'
@@ -21,9 +23,10 @@ quit
 EOL
 ```
 
+The script needs to be executed afterwards:
 ```
 steamcmd +runscript $HOME/update_zomboid.txt
 ```
 
 ## Auto Update
-Put the "pzautoupdate.sh" under /etc/cron.hourly of the host system.
+The automatic update ist conducted from outside the container. The "pzautoupdate.sh" needs to be stored under /etc/cron.hourly for this purpose. 
