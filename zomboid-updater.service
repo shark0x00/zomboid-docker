@@ -1,0 +1,16 @@
+[Unit]
+Description=Project Zomboid Update Checker
+# Don't run if network isn't up
+After=network-online.target docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/root/gaming/zomboidupdater.sh
+# Prevent two runs overlapping — systemd handles this automatically with oneshot
+User=root
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=zomboid-updater
+# If the script somehow hangs, kill it after 20 minutes
+TimeoutStartSec=1200
