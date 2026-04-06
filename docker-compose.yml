@@ -1,12 +1,16 @@
-# docker-compose.yml 
 services:
   steamcmd:
-    image: cm2network/steamcmd:root
+    image: pz-steamcmd:custom
     container_name: steamcmd
-    tty: true
+    restart: unless-stopped
     ports:
-      - "0.0.0.0:16261:16261/udp"
-      - "0.0.0.0:16262:16262/udp"
+      - "16261:16261/udp"
+      - "16262:16262/udp"
     volumes:
-     - /mount/steamcmd_login_volume:/home/steam
-     - /mount/steamcmd_volume:/home/steam/steamcmd
+      - /root/gaming/mount/steamcmd_login_volume:/home/steam
+      - /root/gaming/mount/steamcmd_volume:/home/steam/steamcmd
+    # Run directly as the steam user (no su needed)
+    user: steam
+    command: /home/steam/Steam/servers/projectzomboid/start-server.sh -servername PZWestSide
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
