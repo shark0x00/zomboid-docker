@@ -1,0 +1,16 @@
+# gorcon/rcon-cli configuration — one environment block per game server.
+# Save as: /root/gaming/mount/rcon_volume/rcon.yaml
+#
+# Because every server and the rcon container share the "gaming" network,
+# each "address" is the target server's CONTAINER NAME + its RCON port.
+# Select a server at query time with `-e <env>`, e.g. `-e zomboid`.
+#
+# Requirement: each game server must bind RCON on all interfaces (0.0.0.0),
+# which is the default for Project Zomboid and Minecraft. A server that binds
+# RCON only to 127.0.0.1 cannot be reached over the shared network.
+
+zomboid:
+  address: "steamcmd:27015"            # steamcmd = container_name; port = RCONPort in PZWestSide.ini
+  password: "<RCON_PASSWORD>"
+  type: "rcon"
+  timeout: "10s"

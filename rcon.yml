@@ -1,0 +1,32 @@
+# Dedicated, reusable RCON tooling container (gorcon/rcon-cli).
+# Source: https://github.com/gorcon/rcon-cli.
+# Shared across all game servers via the external "gaming" network.
+# Place at: /root/gaming/rcon.yml
+#
+# One-time setup (creates the shared network):
+#   docker network create gaming
+#
+# Each game server's compose must also join the "gaming" network
+# (see the steamcmd.yml snippet in the notes).
+
+networks:
+  gaming:
+    external: true        # created once with: docker network create gaming
+
+services:
+  rcon:
+    image: outdead/rcon:latest
+    # For reproducible deployments, pin a tag instead, e.g.:
+    # image: outdead/rcon:0.10.3
+    container_name: rcon
+    restart: unless-stopped
+    networks:
+      - gaming
+    volumes:
+      - /root/gaming/mount/rcon/rcon.yaml:/rcon.yaml:ro
+    # The image's default CMD is the interactive client, which exits on EOF in a
+    # detached container. Keep it alive so any updater can `docker exec` one-shot
+    # queries into it on demand (e.g. `/rcon -c /rcon.yaml -e zomboid players`).
+    command: ["tail", "-f", "/dev/null"]
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"

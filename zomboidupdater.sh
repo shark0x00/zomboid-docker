@@ -11,11 +11,65 @@ SERVERNAME="PZWestSide"
 PZ_APPID="380870"
 PZ_WORKSHOP_GAMEID="108600"
 WORKSHOP_DIR="/home/steam/Steam/steamapps/workshop/content/${PZ_WORKSHOP_GAMEID}"
+RCON_CONTAINER="rcon"     # container_name from rcon.yml
+RCON_ENV="zomboid"        # environment block in rcon.yaml
 
 GAME_UPDATE_NEEDED=false
 WORKSHOP_UPDATE_DETECTED=false
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
+
+# ── 0. Player-presence guard (RCON via shared rcon container) ────────────────
+# Prints: player count on success; 0 if server isn't running (nobody to protect);
+# -1 if server is up but RCON couldn't be reached/parsed (unknown -> defer).
+players_online() {
+    local ps_out running
+    ps_out=$(docker exec "$CONTAINER_NAME" ps -aux 2>/dev/null || true)
+    running=$(printf '%s\n' "$ps_out" | grep -cE 'PZWestSide|ProjectZomboid64' || true)
+    running=${running:-0}
+    case "$running" in ''|*[!0-9]*) running=0 ;; esac
+    if [ "$running" -lt 1 ]; then
+        echo 0
+        return 0
+    fi
+
+    local out n
+    out=$(docker exec "$RCON_CONTAINER" \
+        /rcon -c /rcon.yaml -e "$RCON_ENV" players 2>/dev/null || true)
+
+    if [ -z "$out" ]; then
+        echo -1
+        return 0
+    fi
+
+    n=$(printf '%s\n' "$out" | sed -n 's/.*[Cc]onnected (\([0-9]\+\)).*/\1/p' | head -n1)
+    case "$n" in
+        ''|*[!0-9]*) n=-1 ;;
+    esac
+    echo "$n"
+}
+
+# Abort the run cleanly (exit 0) if players are online or state is unknown.
+# $1 = short context string for the log line.
+abort_if_players_online() {
+    local ctx="${1:-}" online
+    online=$(players_online)
+
+    if [ "$online" -lt 0 ]; then
+        log "→ Server is up but RCON player check failed${ctx:+ ($ctx)} — deferring to be safe."
+        logger -p warning -t zomboid-updater "Update deferred: RCON check failed${ctx:+ ($ctx)}"
+        log "========== Done (deferred) =========="
+        exit 0
+    fi
+
+    log "Players currently online: $online"
+    if [ "$online" -gt 0 ]; then
+        log "→ ${online} player(s) connected${ctx:+ ($ctx)} — skipping update, will retry next run."
+        logger -p info -t zomboid-updater "Update deferred: ${online} player(s) online${ctx:+ ($ctx)}"
+        log "========== Done (deferred) =========="
+        exit 0
+    fi
+}
 
 # ── 1. Check if game update is available ─────────────────────────────────────
 check_game_update() {
@@ -177,13 +231,14 @@ restart_server() {
 
 # ══════════════════════════════ MAIN ══════════════════════════════════════════
 log "========== Zomboid Update Check Start =========="
-
+abort_if_players_online "pre-check"
 check_game_update
 
 if [ "$GAME_UPDATE_NEEDED" = true ]; then
     # Full update path: rebuild image, update game + workshop, restart
     log "--- Game update required ---"
     rebuild_image
+    abort_if_players_online "before stop"
     stop_server
     start_maintenance_container
     update_game
@@ -199,6 +254,7 @@ else
 
     if [ "$WORKSHOP_UPDATE_DETECTED" = true ]; then
         log "--- Workshop changes require server restart ---"
+        abort_if_players_online "before workshop restart"
         stop_server
         start_maintenance_container
         restart_server
